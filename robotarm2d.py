@@ -103,6 +103,25 @@ class RobotArm2D(object):
         # plt.show()
 
 
+from two_link_dyn_arm import TwoLinkDynArm
+
+
+class RobotArm2DwDyn(RobotArm2D):
+    def __init__(self, links, angle0=0.0, x0=0.0, y0=0.0, **kw):
+        super().__init__(links, angle0, x0, y0)
+
+        tlda_args = {
+            "M1": links[0].mass,
+            "L1": links[0].length,
+            "M2": links[1].mass,
+            "L2": links[1].length,
+            # "k1" kw.get("k1",0.),
+            # k2 = kw.get("k2",0.),
+        }
+        tlda_args.update(kw)
+        self.tlda = TwoLinkDynArm(**tlda_args)
+
+
 if __name__ == "__main__":
 
     links = [
@@ -111,7 +130,8 @@ if __name__ == "__main__":
         Link(mass=1.0, length=5.0, angle=-135.0),
     ]
 
-    arm = RobotArm2D(links=links)  # , x0=4.0, angle0=200.0)
+    # arm = RobotArm2D(links=links)  # , x0=4.0, angle0=200.0)
+    arm = RobotArm2DwDyn(links=links[0:2], k1=1.0, k2=1.0)
 
     fig = plt.figure()
     ax = fig.add_subplot()
