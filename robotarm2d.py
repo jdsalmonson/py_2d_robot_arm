@@ -1,7 +1,7 @@
 import numpy as np
 from dataclasses import dataclass
 
-import pylab as plt
+import matplotlib.pyplot as plt
 
 
 @dataclass
@@ -94,11 +94,15 @@ class RobotArm2D(object):
         for iseg, lnkcoord in enumerate(self.link_coords):
             print(iseg, lnkcoord.w_angle, lnkcoord.x, lnkcoord.y)
 
-    def plot_positions(self, color="k"):
+    def get_positions(self, color="k"):
         x, y = [self.x0], [self.y0]
         for lnkcoord in self.link_coords:
             x.append(lnkcoord.x)
             y.append(lnkcoord.y)
+        return x, y
+
+    def plot_positions(self):
+        x, y = self.get_positions()
         plt.plot(x, y, c=color)
         # plt.show()
 
@@ -124,8 +128,9 @@ class RobotArm2DwDyn(RobotArm2D):
 
 if __name__ == "__main__":
 
+    init_q1 = 10.0
     links = [
-        Link(mass=1.0, length=10.0, angle=10.0),
+        Link(mass=1.0, length=10.0, angle=init_q1),
         Link(mass=1.0, length=5.0, angle=15.0),
         Link(mass=1.0, length=5.0, angle=-135.0),
     ]
@@ -133,20 +138,61 @@ if __name__ == "__main__":
     # arm = RobotArm2D(links=links)  # , x0=4.0, angle0=200.0)
     arm = RobotArm2DwDyn(links=links[0:2], k1=1.0, k2=1.0)
 
-    fig = plt.figure()
-    ax = fig.add_subplot()
-    plt.xlim([-30, 30])
-    plt.ylim([-30, 30])
+    import matplotlib.pyplot as plt
+    from matplotlib.widgets import Slider, Button
+
+    fig, ax = plt.subplots()
+    # (line,) = plt.plot(t, f(t, init_amplitude, init_frequency), lw=2)
+
+    # fig = plt.figure()
+    # ax = fig.add_subplot()
+    ax.set_xlim([-30, 30])
+    ax.set_ylim([-30, 30])
 
     arm.print_positions()
-    arm.plot_positions(color="b")
+    # arm.plot_positions(color="b")
+    x, y = arm.get_positions()
+    (line,) = plt.plot(x, y, color="b")
 
+    """
     arm.link_coords[0].link.angle -= 90
     arm.link_coords[1].link.angle = 90  # += 53
     arm.eval_positions()
 
     arm.print_positions()
-    arm.plot_positions(color="r")
+    # arm.plot_positions(color="r")
+    x1, y1 = arm.get_positions()
+    plt.plot(x1, y1, color="r")
+    """
 
     ax.set_aspect("equal", adjustable="box")
+
+    axcolor = "lightgoldenrodyellow"
+    ax.margins(x=0)
+
+    # adjust the main plot to make room for the sliders
+    plt.subplots_adjust(bottom=0.25)  # left=0.25, bottom=0.25)
+
+    # Make a horizontal slider to control the frequency.
+    axq1 = plt.axes([0.25, 0.1, 0.65, 0.03], facecolor=axcolor)
+    q1_slider = Slider(
+        ax=axq1,
+        label="q1",
+        valmin=0,
+        valmax=45,
+        valinit=init_q1,
+    )
+
+    # The function to be called anytime a slider's value changes
+    def update(val):
+        arm.link_coords[0].link.angle = q1_slider.val
+        arm.eval_positions()
+        x, y = arm.get_positions()
+        line.set_xdata(x)
+        line.set_ydata(y)
+        fig.canvas.draw_idle()
+
+    # register the update function with slider
+    q1_slider.on_changed(update)
+
     plt.show()
