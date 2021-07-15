@@ -43,12 +43,10 @@ fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 8))
 # (line,) = plt.plot(t, f(t, init_amplitude, init_frequency), lw=2)
 
 qlines = ax1.plot(t, z.T)  # , label=["q1", "q1p", "q2", "q2p"])
-qlines += [
-    ax1.plot(t, torque1(t)),
-    ax1.plot(t, torque2(t)),
-]
-vline = ax1.axvline(t[0], ls="--", color="k")
+qlines += ax1.plot(t, torque1(t))
+qlines += ax1.plot(t, torque2(t))
 ax1.legend(qlines, ["q1", "q1p", "q2", "q2p", "torque1", "torque2"])
+vline = ax1.axvline(t[0], ls="--", color="k")
 
 # fig = plt.figure()
 # ax = fig.add_subplot()
