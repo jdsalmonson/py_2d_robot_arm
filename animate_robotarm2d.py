@@ -37,6 +37,7 @@ z = sol_tla.sol(t)
 
 
 import matplotlib.pyplot as plt
+import matplotlib.animation as animation
 from matplotlib.widgets import Slider, Button
 
 fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 8))
@@ -82,17 +83,34 @@ def update(val):
     # arm.link_coords[0].link.angle = q1_slider.val
     # arm.link_coords[0].w_angle = np.degrees(z.T[tm_slider.val, 0])
     # arm.link_coords[1].w_angle = np.degrees(z.T[tm_slider.val, 2])
-    arm.link_coords[0].link.angle = np.degrees(z.T[tm_slider.val, 0])
-    arm.link_coords[1].link.angle = np.degrees(z.T[tm_slider.val, 2])
+
+    # arm.link_coords[0].link.angle = np.degrees(z.T[tm_slider.val, 0])
+    # arm.link_coords[1].link.angle = np.degrees(z.T[tm_slider.val, 2])
+    arm.link_coords[0].link.angle = np.degrees(z.T[val, 0])
+    arm.link_coords[1].link.angle = np.degrees(z.T[val, 2])
+
     arm.eval_positions()
     x, y = arm.get_positions()
     line.set_xdata(x)
     line.set_ydata(y)
-    vline.set_xdata([t[tm_slider.val]] * 2)
+    # vline.set_xdata([t[tm_slider.val]] * 2)
+    vline.set_xdata([t[val]] * 2)
     fig.canvas.draw_idle()
 
 
-# register the update function with slider
-tm_slider.on_changed(update)
+a = animation.FuncAnimation(
+    fig, update, frames=n_tm - 1, interval=50, repeat=False
+)  # True)
 
-plt.show()
+# from IPython.display import HTML
+# HTML(a.to_jshtml())
+
+#   Very nice:
+# from matplotlib.animation import HTMLWriter
+# a.save("animation.html", writer=HTMLWriter(embed_frames=True))
+#   To allow larger size: animation.embed_limit rc parameter to a larger value (in MB)
+
+# register the update function with slider
+# tm_slider.on_changed(update)
+
+# plt.show()
