@@ -64,6 +64,9 @@ ax2.set_aspect("equal", adjustable="box")
 axcolor = "lightgoldenrodyellow"
 ax2.margins(x=0)
 
+"""
+# Slider:
+
 # adjust the main plot to make room for the sliders
 plt.subplots_adjust(bottom=0.25)  # left=0.25, bottom=0.25)
 
@@ -77,6 +80,7 @@ tm_slider = Slider(
     valstep=1,
     valinit=0,
 )
+"""
 
 # The function to be called anytime a slider's value changes
 def update(val):
@@ -98,17 +102,20 @@ def update(val):
     fig.canvas.draw_idle()
 
 
-a = animation.FuncAnimation(
-    fig, update, frames=n_tm - 1, interval=50, repeat=False
-)  # True)
+a = animation.FuncAnimation(fig, update, frames=n_tm - 1, interval=50, repeat=False)
 
-# from IPython.display import HTML
-# HTML(a.to_jshtml())
 
-#   Very nice:
-# from matplotlib.animation import HTMLWriter
-# a.save("animation.html", writer=HTMLWriter(embed_frames=True))
-#   To allow larger size: animation.embed_limit rc parameter to a larger value (in MB)
+# Make HTML output: -------------------
+from matplotlib.animation import HTMLWriter
+import matplotlib
+
+# Increase size limit for html file:
+matplotlib.rcParams["animation.embed_limit"] = 2 ** 32  # 128
+a.save("animation.html", writer=HTMLWriter(embed_frames=True))
+# To open file in web browser:
+# > xdg-open animation.html
+# --------------------------------------
+
 
 # register the update function with slider
 # tm_slider.on_changed(update)
