@@ -42,8 +42,9 @@ fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 8))
 fig.suptitle("Symmetric Pendulum")
 
 qlines = ax1.plot(t, z.T)
-ax1.legend(qlines, [r"$q$", r"$\dot{q}$"], loc="upper left")
+ax1.legend(qlines, [r"$q$ [rad]", r"$\dot{q}$ [rad/sec]"], loc="upper left")
 vline = ax1.axvline(t[0], ls="--", color="k")
+ax1.set_xlabel("time [sec]")
 
 ax2.set_xlim([-1.1, 1.1])
 ax2.set_ylim([-1.1, 1.1])
