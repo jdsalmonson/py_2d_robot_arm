@@ -37,7 +37,7 @@ sol_sp = solve_ivp(symmetric_pendulum, [t_i, t_f], y_init, dense_output=True)
 t = np.linspace(t_i, t_f, n_tm)
 z = sol_sp.sol(t)
 
-fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 8))
+fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(8, 6))
 
 fig.suptitle("Symmetric Pendulum")
 
