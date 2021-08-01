@@ -54,6 +54,7 @@ class TwoLinkDynArm(object):
     @staticmethod
     def momI_bar(M, L):
         """Moment of Inertia of a bar spinning about its mid-length (center of mass: CM).
+
         Args:
           M (float): mass of bar
           L (float): length of bar
