@@ -31,6 +31,9 @@ author = "Jay Salmonson"
 # or
 # > python -m sphinx -b html -d _build/doctrees . _build/html
 
+# To open in web browser:
+# > xdg-open _build/html/index.html
+
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
