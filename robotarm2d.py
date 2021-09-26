@@ -107,7 +107,7 @@ class RobotArm2D(object):
         # plt.show()
 
 
-from two_link_dyn_arm import TwoLinkDynArm
+from two_link_dyn_arm import TwoLink2DDynArm
 
 
 class RobotArm2DwDyn(RobotArm2D):
@@ -123,7 +123,7 @@ class RobotArm2DwDyn(RobotArm2D):
             # k2 = kw.get("k2",0.),
         }
         tlda_args.update(kw)
-        self.tlda = TwoLinkDynArm(**tlda_args)
+        self.tlda = TwoLink2DDynArm(**tlda_args)
 
 
 if __name__ == "__main__":

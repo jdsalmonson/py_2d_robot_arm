@@ -1,5 +1,5 @@
 import numpy as np
-from two_link_arm import TwoLinkDynArm, step_func
+from two_link_arm import TwoLink2DDynArm, step_func
 
 from numpy import heaviside
 from scipy.integrate import solve_ivp
@@ -13,7 +13,7 @@ def torque2(t: float) -> float:
     return step_func(t, 2.5, 3.0, -1.0)
 
 
-tla = TwoLinkDynArm(T1=torque1, T2=torque2, k1=10.0, k2=10.0)
+tla = TwoLink2DDynArm(T1=torque1, T2=torque2, k1=10.0, k2=10.0)
 
 # initial coordinates and velocities:
 q1_i = 0.0

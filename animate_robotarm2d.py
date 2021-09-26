@@ -1,7 +1,7 @@
 import numpy as np
 from scipy.integrate import solve_ivp
 
-from two_link_dyn_arm import TwoLinkDynArm, step_func
+from two_link_dyn_arm import TwoLink2DDynArm, step_func
 from robotarm2d import Link, RobotArm2DwDyn
 
 init_q1 = 30.0

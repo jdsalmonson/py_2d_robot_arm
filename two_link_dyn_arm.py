@@ -1,7 +1,7 @@
 import numpy as np
 
 
-class TwoLinkDynArm(object):
+class TwoLink2DDynArm(object):
     """Parameters and dynamical equations of a two link arm comprised of two joints:
     a shoulder, q1, and an elbow, q2.  Link #1 is the upper arm and #2 is the lower
     arm.  If the moments of inertia are not set, then their respective links are
@@ -165,7 +165,7 @@ def step_func(t: float, t0: float, t1: float, amp: float = 1.0) -> float:
 
 if __name__ == "__main__":
 
-    tla = TwoLinkDynArm(k1=10.0, k2=10.0)
+    tla = TwoLink2DDynArm(k1=10.0, k2=10.0)
 
     from scipy.integrate import solve_ivp
 
