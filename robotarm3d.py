@@ -105,7 +105,7 @@ class RobotArm3D(object):
             x.append(link.pos[0])
             y.append(link.pos[1])
             z.append(link.pos[2])
-        return x, y, z
+        return np.asarray([x, y, z])
 
 
 if __name__ == "__main__":
