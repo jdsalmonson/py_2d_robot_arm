@@ -194,6 +194,7 @@ class RobotArm3D(object):
         g = 9.8  # m/s^2
         y_axis = np.array([0, 1, 0])
         grav_action = 0.0
+        # batch dot-product of delta_pos w/ y_axis:
         link_dy = link_delta_pos.T @ y_axis
         for dy, link in zip(np.radians(link_dy), self.links):
             grav_action += link.mass * g * dy
