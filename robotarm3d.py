@@ -100,12 +100,108 @@ class RobotArm3D(object):
             print(iseg, lnkcoord.pos)
 
     def get_positions(self):
+        """Return current link joint positions, starting with theanchor point
+        pos0 = [x0, y0, z0]
+
+        Returns:
+          (array): [[x0, x1, x2...], [y0, y1, y2...], [z0, z1, z2...]]
+        """
         x, y, z = [self.pos0[0]], [self.pos0[1]], [self.pos0[2]]
         for link in self.links:
             x.append(link.pos[0])
             y.append(link.pos[1])
             z.append(link.pos[2])
         return np.asarray([x, y, z])
+
+    def get_angles(self):
+        """Return current link joint angles in degrees
+
+        Returns:
+          (array): [[theta1, theta2, theta3...], [phi1, phi2, phi3...]]
+        """
+        th, ph = [], []
+        for link in self.links:
+            th.append(link.alt_th)
+            ph.append(link.sw_phi)
+        return np.asarray([th, ph])
+
+    def get_angles_per_link(self):
+        """Return current link joint angles in degrees, arranged by link
+
+        Returns:
+          (array): [[theta1, phi1], [theta2, phi2], [theta3, phi3]]
+        """
+
+        return self.get_angles().T
+
+    def move_and_get_action_of_motion(
+        self, angles, dist_coef=1.0, ang_coef=1.0, grav_coef=1.0
+    ):
+        """Update angles and calculate the "action" from old to new position.
+
+        Args:
+          angles (array, degrees): link angles
+                                   [[theta1, phi1], [theta2, phi2], [theta3, phi3]]
+          dist_coef (float): scale dist part of action: sum_i M_i*|dx_i| (def: 1.0)
+          ang_coef (float): scale angle part of action: sum_i 1/12*M_i*L_i*|dth_i| (def: 1.0)
+          grav_coef (float): scale grav part of action: sum_i -M_i g.(dx_i) (def: 1.0)
+        Returns:
+          action (float): scalar action of motion
+        """
+        if isinstance(angles, list):
+            angles = np.asarray(angles)
+
+        if angles.shape[1] != len(self.links):
+            raise ValueError("angle array length must match number of robot links")
+
+        org_pos = self.get_positions()
+        org_angs = self.get_angles_per_link()
+
+        for (theta, phi), link in zip(angles, self.links):
+            link.alt_th = theta
+            link.sw_phi = phi
+
+        self.eval_positions()
+
+        new_pos = self.get_positions()
+        new_angs = self.get_angles_per_link()
+
+        # print(org_pos, org_angs)
+        # print(new_pos, new_angs)
+
+        # center-point of each link:
+        ave_link_pos = lambda pos: 0.5 * (pos[:, :-1] + pos[:, 1:])
+        # motion of center-points:
+        link_delta_pos = ave_link_pos(new_pos) - ave_link_pos(org_pos)
+        # distance moved by each link center-point:
+        link_dx = np.linalg.norm(link_delta_pos, axis=0)
+
+        # -- Distance component of action --
+        dist_action = 0.0
+        for dx, link in zip(link_dx, self.links):
+            dist_action += link.mass * dx
+
+        link_dth = np.linalg.norm(
+            np.diff(np.stack([org_angs, new_angs]), axis=0), axis=1
+        )[0]
+
+        # -- Angle component of action --
+        ang_action = 0.0
+        for dth, link in zip(np.radians(link_dth), self.links):
+            ang_action += 1.0 / 12.0 * link.mass * link.length * dth
+
+        # -- Gravity component of action --
+        g = 9.8  # m/s^2
+        y_axis = np.array([0, 1, 0])
+        grav_action = 0.0
+        link_dy = link_delta_pos.T @ y_axis
+        for dy, link in zip(np.radians(link_dy), self.links):
+            grav_action += link.mass * g * dy
+
+        action = (
+            dist_coef * dist_action + ang_coef * ang_action + grav_coef * grav_action
+        )
+        return action
 
 
 if __name__ == "__main__":
