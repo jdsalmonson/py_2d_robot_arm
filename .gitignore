@@ -1,2 +1,4 @@
 # sphinx build folder
 _build
+__pycache__
+*.html
