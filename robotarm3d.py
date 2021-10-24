@@ -151,7 +151,7 @@ class RobotArm3D(object):
         if isinstance(angles, list):
             angles = np.asarray(angles)
 
-        if angles.shape[1] != len(self.links):
+        if angles.shape[0] != len(self.links):
             raise ValueError("angle array length must match number of robot links")
 
         org_pos = self.get_positions()
