@@ -5,6 +5,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import math
+import typing
 import warnings
 from typing import List, Optional, Union
 
@@ -12,7 +13,8 @@ import torch
 
 from ..common.types import Device, get_device, make_device
 from ..common.workaround import _safe_det_3x3
-from .rotation_conversions import _axis_angle_rotation
+from .rotation_conversions import _axis_angle_rotation, matrix_to_quaternion, quaternion_to_matrix, \
+    euler_angles_to_matrix
 
 
 class Transform3d:
@@ -118,16 +120,16 @@ class Transform3d:
     with a positive angle results in a counter clockwise rotation.
 
     This class assumes that transformations are applied on inputs which
-    are row vectors. The internal representation of the Nx4x4 transformation
+    are column vectors (different from pytorch3d!). The internal representation of the Nx4x4 transformation
     matrix is of the form:
 
     .. code-block:: python
 
         M = [
-                [Rxx, Ryx, Rzx, 0],
-                [Rxy, Ryy, Rzy, 0],
-                [Rxz, Ryz, Rzz, 0],
-                [Tx,  Ty,  Tz,  1],
+                [Rxx, Ryx, Rzx, Tx],
+                [Rxy, Ryy, Rzy, Ty],
+                [Rxz, Ryz, Rzz, Tz],
+                [0,  0,  0,  1],
             ]
 
     To apply the transformation to points which are row vectors, the M matrix
@@ -136,18 +138,23 @@ class Transform3d:
     .. code-block:: python
 
         points = [[0, 1, 2]]  # (1 x 3) xyz coordinates of a point
-        transformed_points = points * M
+        transformed_points = M * points.transpose(-1,-2)
 
     """
 
     def __init__(
         self,
+	default_batch_size=1,
         dtype: torch.dtype = torch.float32,
         device: Device = "cpu",
         matrix: Optional[torch.Tensor] = None,
+	rot: Optional[typing.Iterable] = None,
+        pos: Optional[typing.Iterable] = None,
     ) -> None:
         """
         Args:
+            default_batch_size: A positive integer representing the minibatch size
+                if matrix is None, rot is None, and pos is also None.
             dtype: The data type of the transformation matrix.
                 to be used if `matrix = None`.
             device: The device for storing the implemented transformation.
@@ -156,10 +163,18 @@ class Transform3d:
                 representing the 4x4 3D transformation matrix.
                 If `None`, initializes with identity using
                 the specified `device` and `dtype`.
+            rot: A rotation matrix of shape (3, 3) or of shape (minibatch, 3, 3), or
+                a quaternion of shape (4,) or of shape (minibatch, 4), where
+                minibatch should match that of matrix if that is also passed in.
+                The rotation overrides the rotation given in the matrix argument, if any.
+            pos: A tensor of shape (3,) or of shape (minibatch, 3) representing the position
+                offsets of the transforms, where minibatch should match that of matrix if
+                that is also passed in. The position overrides the position given in the
+                matrix argument, if any.
         """
 
         if matrix is None:
-            self._matrix = torch.eye(4, dtype=dtype, device=device).view(1, 4, 4)
+            self._matrix = torch.eye(4, dtype=dtype, device=device).view(default_batch_size, 4, 4)
         else:
             if matrix.ndim not in (2, 3):
                 raise ValueError('"matrix" has to be a 2- or a 3-dimensional tensor.')
@@ -172,6 +187,22 @@ class Transform3d:
             device = matrix.device
             self._matrix = matrix.view(-1, 4, 4)
 
+        if pos is not None:
+            if not torch.is_tensor(pos):
+                pos = torch.tensor(pos, dtype=dtype, device=device)
+            if pos.ndim in (2, 3) and pos.shape[0] > 1 and self._matrix.shape[0] == 1:
+                self._matrix = self._matrix.repeat(pos.shape[0], 1, 1)
+            self._matrix[:, :3, 3] = pos
+
+        if rot is not None:
+            if not torch.is_tensor(rot):
+                rot = torch.tensor(rot, dtype=dtype, device=device)
+            if rot.shape[-1] == 4:
+                rot = quaternion_to_matrix(rot)
+            if rot.ndim == 3 and rot.shape[0] > 1 and self._matrix.shape[0] == 1:
+                self._matrix = self._matrix.repeat(rot.shape[0], 1, 1)
+            self._matrix[:, :3, :3] = rot
+
         self._transforms = []  # store transforms to compose
         self._lu = None
         self.device = make_device(device)
@@ -179,6 +210,12 @@ class Transform3d:
 
     def __len__(self) -> int:
         return self.get_matrix().shape[0]
+
+    def __repr__(self):
+        m = self.get_matrix()
+        pos = m[:, :3, 3]
+        rot = matrix_to_quaternion(m[:, :3, :3])
+        return "Transform3d(rot={}, pos={})".format(rot, pos).replace('\n       ', '')
 
     def __getitem__(
         self, index: Union[int, List[int], slice, torch.Tensor]
@@ -333,6 +370,9 @@ class Transform3d:
         points_batch = torch.cat([points_batch, ones], dim=2)
 
         composed_matrix = self.get_matrix()
+        # to multiply rows of points like this, we have to swap the rightmost column with the bottom row
+        composed_matrix[:, 3, :3] = composed_matrix[:, :3, 3]
+        composed_matrix[:, :3, 3] = 0
         points_out = _broadcast_bmm(points_batch, composed_matrix)
         denom = points_out[..., 3:]  # denominator
         if eps is not None:
@@ -483,7 +523,7 @@ class Translate(Transform3d):
 
         mat = torch.eye(4, dtype=dtype, device=self.device)
         mat = mat.view(1, 4, 4).repeat(N, 1, 1)
-        mat[:, 3, :3] = xyz
+        mat[:, :3, 3] = xyz
         self._matrix = mat
 
     def _get_matrix_inverse(self):
@@ -562,8 +602,18 @@ class Rotate(Transform3d):
         """
         device_ = get_device(R, device)
         super().__init__(device=device_)
+        if not torch.is_tensor(R):
+            R = torch.tensor(R, dtype=dtype, device=device)
+        R = R.to(dtype=dtype).to(device=device)
+        if R.shape[-1] == 4:
+            R = quaternion_to_matrix(R)
+        elif R.shape[-1] == 3 and (len(R.shape) == 1 or R.shape[-2] != 3):
+            R = euler_angles_to_matrix(R, "ZYX")
+        else:
+            _check_valid_rotation_matrix(R, tol=orthogonal_tol)
         if R.dim() == 2:
             R = R[None]
+
         if R.shape[-2:] != (3, 3):
             msg = "R must have shape (3, 3) or (N, 3, 3); got %s"
             raise ValueError(msg % repr(R.shape))
