@@ -100,7 +100,7 @@ class RobotArm3D(object):
             print(iseg, lnkcoord.pos)
 
     def get_positions(self):
-        """Return current link joint positions, starting with theanchor point
+        """Return current link joint positions, starting with the anchor point
         pos0 = [x0, y0, z0]
 
         Returns:
